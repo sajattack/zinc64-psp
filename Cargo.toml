@@ -1,0 +1,35 @@
+[package]
+name = "zinc64-psp"
+version = "0.1.0"
+authors = [
+    "Paul Sajna <hello@paulsajna.com>",
+    "Sebastian Jastrzebski <sebby2k@gmail.com>"
+]
+description = "Commodore 64 emulator port to the Sony PSP"
+license = "GPL-3.0+" # I guess it has to be due to infectious licenses
+keywords = ["psp", "c64", "commodore", "emulator", "no_std"]
+categories = ["emulators"]
+edition = "2018"
+
+[dependencies]
+# FIXME, get a working version released to crates.io
+psp = { path = "rust-psp/psp/", features = ["embedded-graphics"] }
+embedded-graphics = { version = "0.7.1", features = ["fixed_point"] }
+
+zinc64-emu = { version = "0.8.0", default-features=false }
+zinc64-core = { version = "0.8.0", default-features=false }
+zinc64-loader = { version = "0.8.0", default-features=false }
+resid-rs = { version = "1.1.1", default-features=false }
+
+# FIXME, try to get this fixed upstream
+# the crates.io uses the default std features
+# of the sub-crates when the super-crate is set to no_std
+# FIXME also it turns out no_std support was totally broken and I had to patch it a lot
+[patch.crates-io]
+zinc64-emu = { path = "zinc64/zinc64-emu" }
+zinc64-core = { path = "zinc64/zinc64-core" }
+zinc64-loader = { path = "zinc64/zinc64-loader" }
+resid-rs = { path = "resid-rs" }
+
+[profile.release]
+debug=true
