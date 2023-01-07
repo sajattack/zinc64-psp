@@ -1,10 +1,10 @@
 use core::{mem, convert::Infallible};
 use alloc::{vec, vec::Vec};
-use embedded_graphics::{prelude::*, image::{ImageRawBE, ImageRaw, Image}, pixelcolor::Rgb888};
+use embedded_graphics::{prelude::*, image::{ImageRawBE, ImageRaw, Image, ImageRawLE}, pixelcolor::Rgb888};
 use zinc64_core::{VideoOutput, Shared};
 
 pub struct VideoBuffer {
-    dim: (usize, usize),
+    size: (usize, usize),
     palette: [u32; 16],
     pixels: Vec<u32>,
 }
@@ -12,9 +12,9 @@ pub struct VideoBuffer {
 impl VideoBuffer {
     pub fn new(width: u32, height: u32, palette: [u32; 16]) -> VideoBuffer {
         VideoBuffer {
-            dim: (width as usize, height as usize),
+            size: (width as usize, height as usize),
             palette,
-            pixels: vec![0; (width * height) as usize],
+            pixels: vec![0u32; (width * height) as usize],
         }
     }
 
@@ -24,13 +24,13 @@ impl VideoBuffer {
 
 
     pub fn get_pitch(&self) -> usize {
-        self.dim.0 * mem::size_of::<u32>()
+        self.size.0 * mem::size_of::<u32>()
     }
 }
 
 impl VideoOutput for VideoBuffer {
     fn get_dimension(&self) -> (usize, usize) {
-        self.dim
+        self.size
     }
 
     fn reset(&mut self) {
@@ -44,8 +44,30 @@ impl VideoOutput for VideoBuffer {
     }
 }
 
+pub struct Rect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+impl Rect {
+    pub fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
+        Rect {
+            x,
+            y,
+            w: width,
+            h: height,
+        }
+    }
+
+    pub fn new_with_origin(origin: (u32, u32), size: (u32, u32)) -> Self {
+        Self::new(origin.0, origin.1, size.0, size.1)
+    }
+}
+
 pub struct VideoRenderer {
-    viewport_dim: (usize, usize),
+    viewport_rect: Rect,
     frame_buffer: psp::embedded_graphics::Framebuffer,
     video_buffer: Shared<VideoBuffer>,
 }
@@ -53,21 +75,35 @@ pub struct VideoRenderer {
 impl VideoRenderer {
     pub fn build(
         video_buffer: Shared<VideoBuffer>,
-        viewport_dim: (usize, usize),
+        viewport_offset: (u32, u32),
+        viewport_size: (u32, u32),
     ) -> Result<VideoRenderer, ()> {
         let frame_buffer = psp::embedded_graphics::Framebuffer::new();
+        let video_buffer = video_buffer.clone();
+        let viewport_rect = Rect::new_with_origin(viewport_offset, viewport_size);
 
         Ok(VideoRenderer {
-            viewport_dim,
+            viewport_rect,
             frame_buffer,
             video_buffer,
         })
     }
     pub fn render(&mut self) -> Result<(), Infallible> {
-        let raw_u8_slice: &[u8] = unsafe { core::mem::transmute::<&[u32], &[u8]>(self.video_buffer.borrow().get_data()) };
-        let raw: ImageRawBE<Rgb888> = ImageRaw::new(raw_u8_slice, self.video_buffer.borrow().get_pitch() as u32);
-        let image = Image::new(&raw, Point::zero());
-        image.draw(&mut self.frame_buffer)
+        let buf = self.video_buffer.borrow(); 
+        let data = buf.get_data();
+        let mut raw_u8_vec = Vec::new();
+        for word in data {
+           for (i, byte) in word.to_le_bytes().iter().enumerate() {
+               if i != 3
+               {
+                    raw_u8_vec.push(*byte);
+               }
+           }
+        }
+        let raw: ImageRawLE<Rgb888> = ImageRaw::new(raw_u8_vec.as_slice(), buf.get_pitch() as u32/4);
+        let image = Image::new(&raw, Point::new(self.viewport_rect.x as i32, self.viewport_rect.y as i32));
+        image.draw(&mut self.frame_buffer);
+        Ok(())
     }
 }
 
