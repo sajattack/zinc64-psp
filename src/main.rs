@@ -65,6 +65,6 @@ fn psp_main() {
             next_keyboard_event = c64.get_cycles().wrapping_add(20000);
         }
 
-        unsafe { psp::sys::sceDisplayWaitVblankStart(); }
+        //unsafe { psp::sys::sceDisplayWaitVblankStart(); }
     }
 }
