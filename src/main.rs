@@ -28,7 +28,7 @@ impl SoundOutput for NullSound {
 
 fn psp_main() {
     psp::enable_home_button();
-    let config = Rc::new(Config::new_with_roms(SystemModel::c64_pal(), &BASIC_ROM, &CHAR_ROM, &KERNAL_ROM));
+    let config = Rc::new(Config::new_with_roms(SystemModel::c64_ntsc(), &BASIC_ROM, &CHAR_ROM, &KERNAL_ROM));
     let sound_buffer = new_shared(NullSound {});
     let video_buffer = new_shared(VideoBuffer::new(
         config.model.frame_buffer_size.0,
@@ -59,11 +59,11 @@ fn psp_main() {
         c64.reset_vsync();
 
 
-        if c64.get_keyboard().has_events() && c64.get_cycles() >= next_keyboard_event
-        {
-            c64.get_keyboard().drain_event();
-            next_keyboard_event = c64.get_cycles().wrapping_add(20000);
-        }
+        //if c64.get_keyboard().has_events() && c64.get_cycles() >= next_keyboard_event
+        //{
+            //c64.get_keyboard().drain_event();
+            //next_keyboard_event = c64.get_cycles().wrapping_add(200);
+        //}
 
         //unsafe { psp::sys::sceDisplayWaitVblankStart(); }
     }
