@@ -39,6 +39,7 @@ fn psp_main() {
             (0, 0),
             (480, 272)
     ).unwrap();
+
     let chip_factory = Box::new(C64Factory::new(config.clone()));
     let mut c64 = C64::build(
         config,
@@ -48,14 +49,25 @@ fn psp_main() {
     );
     c64.reset(false);
     let mut next_keyboard_event = 0;
+    let mut frame_end: u64 = 0;
+    let mut frame_start: u64 = 0;
+
+    let mut render_end: u64 = 0;
+    let mut render_start: u64 = 0;
+
+    let mut emu_end: u64 = 0;
     loop {
+        unsafe { psp::sys::sceRtcGetCurrentTick(&mut frame_start as *mut u64) };
         c64.run_frame();
+        unsafe { psp::sys::sceRtcGetCurrentTick(&mut emu_end as *mut u64) };
 
         if c64.is_cpu_jam() {
             panic!("CPU JAM detected at 0x{:x}", c64.get_cpu().get_pc());
         }
 
-        video_renderer.render();
+        unsafe { psp::sys::sceRtcGetCurrentTick(&mut render_start as *mut u64) };
+        video_renderer.render().unwrap();
+        unsafe { psp::sys::sceRtcGetCurrentTick(&mut render_end as *mut u64) };
         c64.reset_vsync();
 
 
@@ -64,6 +76,20 @@ fn psp_main() {
             c64.get_keyboard().drain_event();
             next_keyboard_event = c64.get_cycles().wrapping_add(20000);
         }
+        unsafe { psp::sys::sceRtcGetCurrentTick(&mut frame_end as *mut u64); }
+
+        let ticks_per_sec = unsafe { psp::sys::sceRtcGetTickResolution() };
+        let string = format!("iter time: {:.2} ms\n\0", ((frame_end - frame_start) as f32 / ticks_per_sec as f32 * 1000.0));
+        unsafe { psp::sys::sceIoWrite(psp::sys::SceUid(1), string.as_bytes().as_ptr() as *mut core::ffi::c_void, string.len()); }
+
+        let string = format!("render time: {:.2} ms\n\0", ((render_end - render_start) as f32 / ticks_per_sec as f32 * 1000.0));
+        unsafe { psp::sys::sceIoWrite(psp::sys::SceUid(1), string.as_bytes().as_ptr() as *mut core::ffi::c_void, string.len()); }
+
+        let string = format!("emu time: {:.2} ms\n\0", ((emu_end - frame_start) as f32 / ticks_per_sec as f32 * 1000.0));
+        unsafe { psp::sys::sceIoWrite(psp::sys::SceUid(1), string.as_bytes().as_ptr() as *mut core::ffi::c_void, string.len()); }
+
+
+
 
         //unsafe { psp::sys::sceDisplayWaitVblankStart(); }
     }
