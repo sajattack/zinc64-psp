@@ -12,13 +12,12 @@ categories = ["emulators"]
 edition = "2018"
 
 [dependencies]
-psp = { version = "0.3.9", features=["embedded-graphics"]}
-embedded-graphics = { version = "0.7.1", features = ["fixed_point"] }
-
+psp = { path = "rust-psp/psp", features=["embedded-graphics"]}
 zinc64-emu = { version = "0.8.0", default-features=false }
 zinc64-core = { version = "0.8.0", default-features=false }
 zinc64-loader = { version = "0.8.0", default-features=false }
 resid-rs = { version = "1.1.1", default-features=false }
+embedded-graphics = "0.8.1"
 
 # FIXME, try to get this fixed upstream
 # the crates.io uses the default std features
@@ -32,3 +31,4 @@ resid-rs = { path = "resid-rs" }
 
 [profile.release]
 lto="fat"
+codegen-units=1

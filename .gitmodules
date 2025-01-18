@@ -3,7 +3,7 @@
 	url = https://github.com/sajattack/zinc64
 [submodule "rust-psp"]
 	path = rust-psp
-	url = git@github.com:overdrivenpotato/rust-psp
+	url = git@github.com:sajattack/rust-psp
 [submodule "resid-rs"]
 	path = resid-rs
 	url = git@github.com:sajattack/resid-rs

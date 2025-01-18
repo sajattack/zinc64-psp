@@ -91,17 +91,8 @@ impl VideoRenderer {
     pub fn render(&mut self) -> Result<(), Infallible> {
         let buf = self.video_buffer.borrow(); 
         let data = buf.get_data();
-        let mut raw_u8_vec = Vec::new();
-        for word in data {
-           for (i, byte) in word.to_le_bytes().iter().enumerate() {
-               if i != 3
-               {
-                    raw_u8_vec.push(*byte);
-               }
-           }
-        }
-        let raw: ImageRawLE<Rgb888> = ImageRaw::new(raw_u8_vec.as_slice(), buf.get_pitch() as u32/4);
-        let image = Image::new(&raw, Point::new(self.viewport_rect.x as i32, self.viewport_rect.y as i32));
+        let raw: ImageRawLE<psp::embedded_graphics::Rgba8888> = unsafe { ImageRaw::new(core::slice::from_raw_parts(data.as_ptr() as *const u8, data.len()*4) , buf.get_pitch() as u32/4) };
+        let image = Image::new(&raw, Point::new(-40, self.viewport_rect.y as i32));
         image.draw(&mut self.frame_buffer);
         Ok(())
     }
