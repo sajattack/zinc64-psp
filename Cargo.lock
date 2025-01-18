@@ -21,12 +21,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc827186963e592360843fb5ba4b973e145841266c1357f7180c43526f2e5b61"
 
 [[package]]
-name = "bitflags"
-version = "2.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f68f53c83ab957f72c32642f3868eec03eb974d1fb82e453128456482613d36"
-
-[[package]]
 name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -65,18 +59,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libm"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
-
-[[package]]
-name = "libm"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8355be11b20d696c8f18f6cc018c4e372165b1fa8126cef092399c9951984ffa"
-
-[[package]]
 name = "log"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -107,119 +89,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_enum"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e613fc340b2220f734a8595782c551f1250e969d87d3be1ae0579e8d4065179"
-dependencies = [
- "num_enum_derive",
-]
-
-[[package]]
-name = "num_enum_derive"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af1844ef2428cc3e1cb900be36181049ef3d3193c63e43026cfe202983b27a56"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "paste"
-version = "1.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
-
-[[package]]
-name = "proc-macro2"
-version = "1.0.93"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60946a68e5f9d28b0dc1c21bb8a97ee7d018a8b322fa57838ba31cc878e22d99"
-dependencies = [
- "unicode-ident",
-]
-
-[[package]]
-name = "psp"
-version = "0.3.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5aaa74ac3077dfbbb2d13f19cc4f9d32534f4c620dedaa2fb2f706191d3b46"
-dependencies = [
- "bitflags",
- "embedded-graphics-core",
- "libm 0.2.11",
- "num_enum",
- "num_enum_derive",
- "paste",
- "unstringify",
-]
-
-[[package]]
-name = "quote"
-version = "1.0.38"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e4dccaaaf89514f546c693ddc140f729f958c247918a13380cccc6078391acc"
-dependencies = [
- "proc-macro2",
-]
-
-[[package]]
 name = "resid-rs"
 version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4cf0a31213e31d3ecb79e1dadc41ae14a5936f7503361509df19fa2493199ea"
 dependencies = [
  "bit_field",
- "libm 0.1.4",
 ]
-
-[[package]]
-name = "syn"
-version = "2.0.65"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2863d96a84c6439701d7a38f9de935ec562c8832cc55d1dde0f513b52fad106"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
-]
-
-[[package]]
-name = "unicode-ident"
-version = "1.0.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adb9e6ca4f869e1180728b7950e35922a7fc6397f7b641499e8f3ef06e50dc83"
-
-[[package]]
-name = "unstringify"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9612d66420ead229348915b911ad9689e79dfc347fe7a876a82551c8eab36b5e"
 
 [[package]]
 name = "zinc64-core"
-version = "0.8.0"
-dependencies = [
- "bit_field",
-]
-
-[[package]]
-name = "zinc64-emu"
-version = "0.8.0"
+version = "0.9.0"
+source = "git+https://github.com/binaryfields/zinc64#66cf6c45d2c0d15e4989d4a73977ee0e682b8d93"
 dependencies = [
  "bit_field",
  "log 0.3.9",
  "resid-rs",
- "zinc64-core",
-]
-
-[[package]]
-name = "zinc64-loader"
-version = "0.8.0"
-dependencies = [
- "byteorder",
- "log 0.3.9",
- "zinc64-emu",
 ]
 
 [[package]]
@@ -227,9 +112,17 @@ name = "zinc64-psp"
 version = "0.1.0"
 dependencies = [
  "embedded-graphics",
- "psp",
+ "zinc64-core",
+ "zinc64-system",
+]
+
+[[package]]
+name = "zinc64-system"
+version = "0.9.0"
+source = "git+https://github.com/binaryfields/zinc64#66cf6c45d2c0d15e4989d4a73977ee0e682b8d93"
+dependencies = [
+ "bit_field",
+ "log 0.3.9",
  "resid-rs",
  "zinc64-core",
- "zinc64-emu",
- "zinc64-loader",
 ]
