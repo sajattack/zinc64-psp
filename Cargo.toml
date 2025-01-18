@@ -20,7 +20,6 @@ zinc64-emu = { version = "0.8.0", default-features=false }
 zinc64-core = { version = "0.8.0", default-features=false }
 zinc64-loader = { version = "0.8.0", default-features=false }
 resid-rs = { version = "1.1.1", default-features=false }
-embedded-graphics = "0.8.1"
 
 # FIXME, try to get this fixed upstream
 # the crates.io uses the default std features

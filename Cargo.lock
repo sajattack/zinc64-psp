@@ -149,7 +149,7 @@ checksum = "ad5aaa74ac3077dfbbb2d13f19cc4f9d32534f4c620dedaa2fb2f706191d3b46"
 dependencies = [
  "bitflags",
  "embedded-graphics-core",
- "libm 0.2.8",
+ "libm 0.2.11",
  "num_enum",
  "num_enum_derive",
  "paste",
