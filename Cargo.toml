@@ -12,7 +12,10 @@ categories = ["emulators"]
 edition = "2018"
 
 [dependencies]
-psp = { path = "rust-psp/psp", features=["embedded-graphics"]}
+psp = { version = "0.3.11", features = ["embedded-graphics"] }
+embedded-graphics = { version = "0.8.1"}
+
+
 zinc64-emu = { version = "0.8.0", default-features=false }
 zinc64-core = { version = "0.8.0", default-features=false }
 zinc64-loader = { version = "0.8.0", default-features=false }
@@ -30,5 +33,7 @@ zinc64-loader = { path = "zinc64/zinc64-loader" }
 resid-rs = { path = "resid-rs" }
 
 [profile.release]
+opt-level=3
 lto="fat"
 codegen-units=1
+overflow-checks=false

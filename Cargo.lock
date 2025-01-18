@@ -144,10 +144,12 @@ dependencies = [
 [[package]]
 name = "psp"
 version = "0.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad5aaa74ac3077dfbbb2d13f19cc4f9d32534f4c620dedaa2fb2f706191d3b46"
 dependencies = [
  "bitflags",
  "embedded-graphics-core",
- "libm 0.2.11",
+ "libm 0.2.8",
  "num_enum",
  "num_enum_derive",
  "paste",
@@ -173,9 +175,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.96"
+version = "2.0.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5d0adab1ae378d7f53bdebc67a39f1f151407ef230f0ce2883572f5d8985c80"
+checksum = "d2863d96a84c6439701d7a38f9de935ec562c8832cc55d1dde0f513b52fad106"
 dependencies = [
  "proc-macro2",
  "quote",
