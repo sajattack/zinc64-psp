@@ -1,7 +1,7 @@
 use core::{mem, convert::Infallible};
 use alloc::{vec, vec::Vec};
-use embedded_graphics::{prelude::*, image::{ImageRawBE, ImageRaw, Image, ImageRawLE}, pixelcolor::Rgb888};
 use zinc64_core::{VideoOutput, Shared};
+use psp::Align16;
 
 pub struct VideoBuffer {
     size: (usize, usize),
@@ -24,7 +24,7 @@ impl VideoBuffer {
 
 
     pub fn get_pitch(&self) -> usize {
-        self.size.0 * mem::size_of::<u32>()
+        self.size.0 * 4
     }
 }
 
@@ -51,6 +51,27 @@ pub struct Rect {
     pub h: u32,
 }
 
+static VERTICES: Align16<[Vertex; 2]> = Align16([
+    Vertex {
+        u: 0.0,
+        v: 0.0,
+        color: 0xffff_ffff,
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+    },
+    Vertex {
+        u: 512.0,
+        v: 272.0,
+        color: 0xffff_ffff,
+        x: 512.0,
+        y: 272.0,
+        z: 0.0,
+    }
+]);
+
+static mut LIST: Align16<[u32; 0x10000]> = Align16([0; 0x10000]);
+
 impl Rect {
     pub fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
         Rect {
@@ -68,7 +89,7 @@ impl Rect {
 
 pub struct VideoRenderer {
     viewport_rect: Rect,
-    frame_buffer: psp::embedded_graphics::Framebuffer,
+    allocator: psp::vram_alloc::SimpleVramAllocator,
     video_buffer: Shared<VideoBuffer>,
 }
 
@@ -78,33 +99,71 @@ impl VideoRenderer {
         viewport_offset: (u32, u32),
         viewport_size: (u32, u32),
     ) -> Result<VideoRenderer, ()> {
-        let frame_buffer = psp::embedded_graphics::Framebuffer::new();
+
+        let allocator = psp::vram_alloc::get_vram_allocator().unwrap();
         let video_buffer = video_buffer.clone();
         let viewport_rect = Rect::new_with_origin(viewport_offset, viewport_size);
 
         Ok(VideoRenderer {
             viewport_rect,
-            frame_buffer,
+            allocator,
             video_buffer,
         })
     }
+
     pub fn render(&mut self) -> Result<(), Infallible> {
         let buf = self.video_buffer.borrow(); 
-        let data = buf.get_data();
-        let mut raw_u8_vec = Vec::new();
-        for word in data {
-           for (i, byte) in word.to_le_bytes().iter().enumerate() {
-               if i != 3
-               {
-                    raw_u8_vec.push(*byte);
-               }
-           }
+        let data = Align16(buf.get_data());
+
+        unsafe {
+            psp::sys::sceGuStart(psp::sys::GuContextType::Direct, LIST.0.as_mut_ptr() as _);
+            psp::sys::sceGuTexMode(psp::sys::TexturePixelFormat::Psm8888, 0, 0, 0);
+            psp::sys::sceGuTexImage(psp::sys::MipmapLevel::None, 512, 272, 512, data.0.as_ptr() as _);
+            psp::sys::sceGuEnable(psp::sys::GuState::Texture2D);
+            psp::sys::sceGuDrawArray(psp::sys::GuPrimitive::Sprites, psp::sys::VertexType::COLOR_8888 | psp::sys::VertexType::TEXTURE_32BITF | psp::sys::VertexType::VERTEX_32BITF | psp::sys::VertexType::TRANSFORM_2D, 2, core::ptr::null() as _, VERTICES.0.as_ptr() as _);
+            psp::sys::sceGuDisable(psp::sys::GuState::Texture2D); // Questionably necessary?
+            psp::sys::sceGuFinish();
+            psp::sys::sceGuSync(psp::sys::GuSyncMode::Finish, psp::sys::GuSyncBehavior::Wait);
+            psp::sys::sceGuSwapBuffers();
         }
-        let raw: ImageRawLE<Rgb888> = ImageRaw::new(raw_u8_vec.as_slice(), buf.get_pitch() as u32/4);
-        let image = Image::new(&raw, Point::new(self.viewport_rect.x as i32, self.viewport_rect.y as i32));
-        image.draw(&mut self.frame_buffer);
+        
         Ok(())
     }
+
+    pub fn init(&mut self) -> Result<(), Infallible> {
+        unsafe 
+        {
+
+            let fbp0 = self.allocator.alloc_texture_pixels(512, 272, psp::sys::TexturePixelFormat::Psm8888).as_mut_ptr_from_zero();
+            let fbp1 = self.allocator.alloc_texture_pixels(512, 272, psp::sys::TexturePixelFormat::Psm8888).as_mut_ptr_from_zero();
+
+            psp::sys::sceGuInit();
+
+            psp::sys::sceGuStart(psp::sys::GuContextType::Direct, LIST.0.as_mut_ptr() as _);
+            psp::sys::sceGuDrawBuffer(psp::sys::DisplayPixelFormat::Psm8888, fbp0 as _, 512i32);
+            psp::sys::sceGuDispBuffer(512i32, 272i32, fbp1 as _, 512i32);
+            psp::sys::sceGuOffset(2048 - (512 / 2), 2048 - (272 / 2));
+            psp::sys::sceGuViewport(2048, 2048, 512i32, 272i32);
+            psp::sys::sceGuScissor(0, 0, 512i32, 272i32);
+            psp::sys::sceGuEnable(psp::sys::GuState::ScissorTest);
+            psp::sys::sceGuEnable(psp::sys::GuState::Texture2D);
+
+            psp::sys::sceGuFinish();
+            psp::sys::sceGuSync(psp::sys::GuSyncMode::Finish, psp::sys::GuSyncBehavior::Wait);
+            psp::sys::sceGuDisplay(true);
+        }
+        Ok(())
+    }
+}
+
+#[repr(C, packed)]
+struct Vertex {
+    pub u: f32,
+    pub v: f32,
+    pub color: u32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 pub struct Palette;
@@ -112,22 +171,22 @@ pub struct Palette;
 impl Palette {
     pub fn default() -> [u32; 16] {
         [
-            0x000000, // Black
-            0xffffff, // White
-            0x68372b, // Red
-            0x70a4b2, // Cyan
-            0x6f3d86, // Purple
-            0x588d43, // Green
-            0x352879, // Blue
-            0xb8c76f, // Yellow
-            0x6f4f25, // Orange
-            0x433900, // Brown
-            0x9a6759, // LightRed
-            0x444444, // DarkGray
-            0x6c6c6c, // MediumGray
-            0x9ad284, // LightGreen
-            0x6c5eb5, // LightBlue
-            0x959595, // LightGray
+            0xff000000, // Black
+            0xffffffff, // White
+            0xff2b3768, // Red
+            0xffb2a470, // Cyan
+            0xff863d6f, // Purple
+            0xff438d58, // Green
+            0xff792835, // Blue
+            0xff6fc7b8, // Yellow
+            0xff254f6f, // Orange
+            0xff003943, // Brown
+            0xff59679a, // LightRed
+            0xff444444, // DarkGray
+            0xff6c6c6c, // MediumGray
+            0xff84d29a, // LightGreen
+            0xffb55e6c, // LightBlue
+            0xff959595, // LightGray
         ]
     }
 }
