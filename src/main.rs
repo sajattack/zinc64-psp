@@ -2,7 +2,7 @@
 #![no_main]
 
 use sound::SoundBuffer;
-use video::{Palette, VideoBuffer, VideoRenderer};
+use video::{VideoBuffer, VideoRenderer};
 use zinc64_core::{SystemModel, new_shared, SoundOutput};
 use zinc64_emu::system::{Config, C64Factory, C64};
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
@@ -33,7 +33,6 @@ fn psp_main() {
     let video_buffer = new_shared(VideoBuffer::new(
         config.model.frame_buffer_size.0,
         config.model.frame_buffer_size.1,
-        Palette::default(),
     ));
     let mut video_renderer = VideoRenderer::build(video_buffer.clone(),
             (0, 0),

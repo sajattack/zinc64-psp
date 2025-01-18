@@ -5,26 +5,24 @@ use psp::Align16;
 
 pub struct VideoBuffer {
     size: (usize, usize),
-    palette: [u32; 16],
-    pixels: Vec<u32>,
+    pixels: Vec<u8>,
 }
 
 impl VideoBuffer {
-    pub fn new(width: u32, height: u32, palette: [u32; 16]) -> VideoBuffer {
+    pub fn new(width: u32, height: u32) -> VideoBuffer {
         VideoBuffer {
-            size: (width as usize, height as usize),
-            palette,
-            pixels: vec![0u32; (width * height) as usize],
+            size: (512 as usize, height as usize),
+            pixels: vec![0u8; (512 * height) as usize],
         }
     }
 
-    pub fn get_data(&self) -> &[u32] {
+    pub fn get_data(&self) -> &[u8] {
         self.pixels.as_ref()
     }
 
 
     pub fn get_pitch(&self) -> usize {
-        self.size.0 * 4
+        self.size.0
     }
 }
 
@@ -40,7 +38,7 @@ impl VideoOutput for VideoBuffer {
     }
 
     fn write(&mut self, index: usize, color: u8) {
-        self.pixels[index] = self.palette[color as usize];
+        self.pixels[index] = color;
     }
 }
 
@@ -56,21 +54,21 @@ static VERTICES: Align16<[Vertex; 2]> = Align16([
         u: 0.0,
         v: 0.0,
         color: 0xffff_ffff,
-        x: 0.0,
+        x: -40.0,
         y: 0.0,
         z: 0.0,
     },
     Vertex {
-        u: 512.0,
+        u: 480.0,
         v: 272.0,
         color: 0xffff_ffff,
-        x: 512.0,
+        x: 440.0,
         y: 272.0,
         z: 0.0,
     }
 ]);
 
-static mut LIST: Align16<[u32; 0x10000]> = Align16([0; 0x10000]);
+static mut LIST: Align16<[u32; 0x40000]> = Align16([0; 0x40000]);
 
 impl Rect {
     pub fn new(x: u32, y: u32, width: u32, height: u32) -> Self {
@@ -113,15 +111,17 @@ impl VideoRenderer {
 
     pub fn render(&mut self) -> Result<(), Infallible> {
         let buf = self.video_buffer.borrow(); 
-        let data = Align16(buf.get_data());
+        let data = buf.get_data();
 
         unsafe {
             psp::sys::sceGuStart(psp::sys::GuContextType::Direct, LIST.0.as_mut_ptr() as _);
-            psp::sys::sceGuTexMode(psp::sys::TexturePixelFormat::Psm8888, 0, 0, 0);
-            psp::sys::sceGuTexImage(psp::sys::MipmapLevel::None, 512, 272, 512, data.0.as_ptr() as _);
-            psp::sys::sceGuEnable(psp::sys::GuState::Texture2D);
+
+            psp::sys::sceGuClutMode(psp::sys::ClutPixelFormat::Psm5650, 0, 0xff, 0);
+
+            psp::sys::sceGuTexMode(psp::sys::TexturePixelFormat::PsmT8, 0, 0, 0);
+            psp::sys::sceGuTexImage(psp::sys::MipmapLevel::None, 512, 272, 512, data.as_ptr() as _);
+            psp::sys::sceGuTexFunc(psp::sys::TextureEffect::Replace, psp::sys::TextureColorComponent::Rgb);
             psp::sys::sceGuDrawArray(psp::sys::GuPrimitive::Sprites, psp::sys::VertexType::COLOR_8888 | psp::sys::VertexType::TEXTURE_32BITF | psp::sys::VertexType::VERTEX_32BITF | psp::sys::VertexType::TRANSFORM_2D, 2, core::ptr::null() as _, VERTICES.0.as_ptr() as _);
-            psp::sys::sceGuDisable(psp::sys::GuState::Texture2D); // Questionably necessary?
             psp::sys::sceGuFinish();
             psp::sys::sceGuSync(psp::sys::GuSyncMode::Finish, psp::sys::GuSyncBehavior::Wait);
             psp::sys::sceGuSwapBuffers();
@@ -134,19 +134,20 @@ impl VideoRenderer {
         unsafe 
         {
 
-            let fbp0 = self.allocator.alloc_texture_pixels(512, 272, psp::sys::TexturePixelFormat::Psm8888).as_mut_ptr_from_zero();
-            let fbp1 = self.allocator.alloc_texture_pixels(512, 272, psp::sys::TexturePixelFormat::Psm8888).as_mut_ptr_from_zero();
+            let fbp0 = self.allocator.alloc_texture_pixels(480, 272, psp::sys::TexturePixelFormat::Psm5650).as_mut_ptr_from_zero();
+            let fbp1 = self.allocator.alloc_texture_pixels(480, 272, psp::sys::TexturePixelFormat::Psm5650).as_mut_ptr_from_zero();
 
             psp::sys::sceGuInit();
 
             psp::sys::sceGuStart(psp::sys::GuContextType::Direct, LIST.0.as_mut_ptr() as _);
-            psp::sys::sceGuDrawBuffer(psp::sys::DisplayPixelFormat::Psm8888, fbp0 as _, 512i32);
-            psp::sys::sceGuDispBuffer(512i32, 272i32, fbp1 as _, 512i32);
-            psp::sys::sceGuOffset(2048 - (512 / 2), 2048 - (272 / 2));
-            psp::sys::sceGuViewport(2048, 2048, 512i32, 272i32);
-            psp::sys::sceGuScissor(0, 0, 512i32, 272i32);
+            psp::sys::sceGuDrawBuffer(psp::sys::DisplayPixelFormat::Psm5650, fbp0 as _, 512i32);
+            psp::sys::sceGuDispBuffer(480, 272i32, fbp1 as _, 512i32);
+            psp::sys::sceGuOffset(2048 - (480/ 2), 2048 - (272 / 2));
+            psp::sys::sceGuViewport(2048, 2048, 480i32, 272i32);
+            psp::sys::sceGuScissor(0, 0, 480i32, 272i32);
             psp::sys::sceGuEnable(psp::sys::GuState::ScissorTest);
             psp::sys::sceGuEnable(psp::sys::GuState::Texture2D);
+            psp::sys::sceGuClutLoad(2, CLUT.0.as_ptr() as _);
 
             psp::sys::sceGuFinish();
             psp::sys::sceGuSync(psp::sys::GuSyncMode::Finish, psp::sys::GuSyncBehavior::Wait);
@@ -166,27 +167,22 @@ struct Vertex {
     pub z: f32,
 }
 
-pub struct Palette;
-
-impl Palette {
-    pub fn default() -> [u32; 16] {
-        [
-            0xff000000, // Black
-            0xffffffff, // White
-            0xff2b3768, // Red
-            0xffb2a470, // Cyan
-            0xff863d6f, // Purple
-            0xff438d58, // Green
-            0xff792835, // Blue
-            0xff6fc7b8, // Yellow
-            0xff254f6f, // Orange
-            0xff003943, // Brown
-            0xff59679a, // LightRed
-            0xff444444, // DarkGray
-            0xff6c6c6c, // MediumGray
-            0xff84d29a, // LightGreen
-            0xffb55e6c, // LightBlue
-            0xff959595, // LightGray
-        ]
-    }
-}
+static CLUT: Align16<[u16; 16]> =
+Align16([
+    0x0000, // Black
+    0xffff, // White
+    0x29ad, // Red
+    0xb52e, // Cyan
+    0x81ed, // Purple
+    0x446b, // Green
+    0x7946, // Blue
+    0x6e37, // Yellow
+    0x226d, // Orange
+    0x01c8, // Brown
+    0x5b33, // LightRed
+    0x4228, // DarkGray
+    0x6b6d, // MediumGray
+    0x8693, // LightGreen
+    0xb2ed, // LightBlue
+    0x94b2, // LightGray
+]);
