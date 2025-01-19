@@ -1,6 +1,7 @@
 use core::{mem, convert::Infallible};
 use alloc::{vec, vec::Vec};
-use zinc64_core::{VideoOutput, Shared};
+use zinc64_core::factory::VideoOutput;
+use zinc64_core::util::Shared;
 use psp::Align16;
 
 pub struct VideoBuffer {
@@ -151,6 +152,7 @@ impl VideoRenderer {
 
             psp::sys::sceGuFinish();
             psp::sys::sceGuSync(psp::sys::GuSyncMode::Finish, psp::sys::GuSyncBehavior::Wait);
+
             psp::sys::sceGuDisplay(true);
         }
         Ok(())
